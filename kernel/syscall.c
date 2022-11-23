@@ -53,19 +53,21 @@ argraw(int n)
 }
 
 // Fetch the nth 32-bit system call argument.
-void
+int
 argint(int n, int *ip)
 {
   *ip = argraw(n);
+  return 0;
 }
 
 // Retrieve an argument as a pointer.
 // Doesn't check for legality, since
 // copyin/copyout will do that.
-void
+int
 argaddr(int n, uint64 *ip)
 {
   *ip = argraw(n);
+  return 0;
 }
 
 // Fetch the nth word-sized system call argument as a null-terminated string.
@@ -101,7 +103,8 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
-
+extern uint64 sys_trace(void);
+extern uint64 sys_sysinfo(void);
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
 static uint64 (*syscalls[])(void) = {
@@ -126,6 +129,8 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_trace]   sys_trace,
+[SYS_sysinfo]   sys_sysinfo,
 };
 
 void
@@ -135,10 +140,19 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+  static char *syscall_names[] = {
+  "", "fork", "exit", "wait", "pipe", 
+  "read", "kill", "exec", "fstat", "chdir", 
+  "dup", "getpid", "sbrk", "sleep", "uptime", 
+  "open", "write", "mknod", "unlink", "link", 
+  "mkdir", "close", "trace", "sysinfo",};
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+    if((1 << num) & p->mask) {
+      printf("%d: syscall %s -> %d\n", p->pid, syscall_names[num], p->trapframe->a0);
+    }
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

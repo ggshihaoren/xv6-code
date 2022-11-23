@@ -43,7 +43,7 @@ filealloc(void)
   return 0;
 }
 
-// Increment ref count for file f.
+// Increment ref cfileount for file f.
 struct file*
 filedup(struct file *f)
 {
